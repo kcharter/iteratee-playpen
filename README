@@ -1,0 +1,6 @@
+A personal exploration of Haskell iteratees.
+
+Every time I read about iteratees, my sense of my own idiocy is
+reinforced. I'd like to use either iteratees or perhaps conduits in
+another project (spdy-base) and so the time is right to dig in and
+teach myself this stuff.
