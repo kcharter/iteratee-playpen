@@ -190,5 +190,5 @@ cat s1 s2 = Source $ do
 runOnSource :: Monad m => Source m a -> Incremental a b -> m (Incremental a b, Source m a)
 runOnSource s (Partway f) = do
   (mi, s') <- runSource s
-  return (f mi, s')
+  runOnSource s' (f mi)
 runOnSource s doneOrErr = return (doneOrErr, s)
