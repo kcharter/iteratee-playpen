@@ -35,7 +35,7 @@ module Incremental where
 
 import Control.Monad.IO.Class (MonadIO(..))
 import Data.Char (isDigit)
-import System.IO (Handle, hIsEOF, hClose, hGetChar)
+import System.IO (Handle, hIsEOF, hClose, hGetChar, openFile, IOMode(..))
 
 -- | An incremental computation that consumes zero or more values of
 -- type @a@ to produce a value of type @b@.
@@ -170,13 +170,28 @@ listSource :: Monad m => [a] -> Source m a
 listSource [] = empty
 listSource (x:xs) = Source $ return (Just x, listSource xs)
 
--- | Here's a source of characters from an IO handle.
-handleCharSource :: MonadIO m => Handle -> Source m Char
+-- | Here's a source of characters from an IO handle. Like the
+-- enumerators in the enumerator package, this source does not
+-- automatically close the handle when it reaches the end of input.
+handleCharSource :: Handle -> Source IO Char
 handleCharSource h = Source $ do
-  eof <- liftIO $ hIsEOF h
+  eof <- hIsEOF h
   (if eof
    then return (Nothing, empty)
-   else liftIO (hGetChar h) >>= \c -> return (Just c, handleCharSource h))
+   else hGetChar h >>= \c -> return (Just c, handleCharSource h))
+
+-- | A source of characters from a named file. Closes the file when
+-- the end of file is reached.
+fileCharSource :: FilePath -> Source IO Char
+fileCharSource fp =
+  Source $ do
+    h <- openFile fp ReadMode
+    runSource $ safeCharSource h
+    where safeCharSource h = Source $ do
+            eof <- hIsEOF h
+            (if eof
+             then hClose h >> return (Nothing, empty)
+             else hGetChar h >>= \c -> return (Just c, safeCharSource h))
 
 -- | We can make a new source by concatenating two others.
 cat :: Monad m => Source m a -> Source m a -> Source m a
@@ -192,3 +207,16 @@ runOnSource s (Partway f) = do
   (mi, s') <- runSource s
   runOnSource s' (f mi)
 runOnSource s doneOrErr = return (doneOrErr, s)
+
+-- | Consumes all input and results in nothing.
+skipRest :: Incremental a ()
+skipRest = Partway $ maybe (Done ()) (const skipRest)
+
+finish :: Monad m => Source m a -> Incremental a b -> m (Either String b)
+finish s inc = do
+  (inc', s') <- runOnSource s inc
+  runOnSource s' skipRest
+  return $ case inc' of
+    Done x -> Right x
+    Partway _ -> Left "failed to produce a result"
+    Error s -> Left s

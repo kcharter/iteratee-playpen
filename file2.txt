@@ -1,0 +1,3 @@
+and
+here are
+the surprising contents of file 2
