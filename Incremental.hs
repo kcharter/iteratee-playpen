@@ -37,6 +37,8 @@ import Control.Monad.IO.Class (MonadIO(..))
 import Data.Char (isDigit)
 import System.IO (Handle, hIsEOF, hClose, hGetChar, openFile, IOMode(..))
 
+-- * Simplified iteratees: incremental computations
+
 -- | An incremental computation that consumes zero or more values of
 -- type @a@ to produce a value of type @b@.
 --
@@ -145,6 +147,8 @@ runOnList' [] (Partway f) = (f Nothing, [])
 runOnList' (x:xs) (Partway f) = (f (Just x), xs)
 runOnList' xs inc = (inc, xs)
 
+-- * Explicit data sources (a digression)
+
 -- | It departs from the usual iteratee practice, but it's curious
 -- that there is no general type for an input source. The funny thing
 -- about the usual defininition of enumerator is that although an
@@ -193,7 +197,9 @@ fileCharSource fp =
              then hClose h >> return (Nothing, empty)
              else hGetChar h >>= \c -> return (Just c, safeCharSource h))
 
--- | We can make a new source by concatenating two others.
+-- | We can make a new source by concatenating two
+-- others. Concatentation hides the end-of-input from the first
+-- source, proceeding on to the second source.
 cat :: Monad m => Source m a -> Source m a -> Source m a
 cat s1 s2 = Source $ do
   (mi, s1') <- runSource s1
@@ -212,6 +218,8 @@ runOnSource s doneOrErr = return (doneOrErr, s)
 skipRest :: Incremental a ()
 skipRest = Partway $ maybe (Done ()) (const skipRest)
 
+-- | Transform an incremental computation on a source, consume any
+-- leftover input, and produce the final error or result.
 finish :: Monad m => Source m a -> Incremental a b -> m (Either String b)
 finish s inc = do
   (inc', s') <- runOnSource s inc
