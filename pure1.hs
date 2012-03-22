@@ -21,6 +21,8 @@ main = do
     digitsSource (zeroToNine `cat` file1 `cat` file2)
   doIO ("count the digits in " ++ show zeroToNineString ++ " catted with itself 10 times, and with file1") $
     digitsSource $ (foldl' cat empty (replicate 10 zeroToNine)) `cat` file1
+  doIO "take the first character of file1" (finish file1 incHead)
+  doIO "take the first two characters of file1" (finish file1 incTwoHeads)
   where file1 = fileCharSource "file1.txt"
         file2 = fileCharSource "file2.txt"
         zeroToNineString =  "0123456789"

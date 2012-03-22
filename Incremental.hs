@@ -228,3 +228,30 @@ finish s inc = do
     Done x -> Right x
     Partway _ -> Left "failed to produce a result"
     Error s -> Left s
+
+-- * The monad instance for 'Incremental'
+
+-- | The monad instance is a little simpler than the one for an
+-- iteratee, since the 'Done' case doesn't carry unconsumed input. The
+-- 'Partway' case shows the essential composition of continuation
+-- function with @(>>= f)@, delaying the application of 'f' until its
+-- input is available.
+instance Monad (Incremental a) where
+  return x = Done x
+  inc >>= f =
+    case inc of
+      Done x -> f x
+      Partway cont -> Partway $ (>>= f) . cont
+      Error msg -> Error msg
+
+-- | Extracts the first input from a stream.
+incHead :: Incremental a a
+incHead = Partway $ maybe (Error "no head") Done
+
+-- | Extracts the first two inputs from a stream, using 'incHead'
+-- twice in a monadic composition.
+incTwoHeads :: Incremental a (a,a)
+incTwoHeads = do
+  x <- incHead
+  y <- incHead
+  return (x,y)
