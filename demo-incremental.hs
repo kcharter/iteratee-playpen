@@ -1,3 +1,6 @@
+-- | A demo of the 'Incremental' type, a kind of simplified iteratee
+-- which supports just pure incremental computations.
+
 module Main where
 
 import Data.List (foldl')
